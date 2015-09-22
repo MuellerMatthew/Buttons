@@ -84,7 +84,8 @@ $.extend( DataTable.ext.buttons, {
 				.on( 'column-reorder.dt'+conf.namespace, function (e, settings, details) {
 					var col = dt.column( conf.columns );
 
-					button.text( conf._columnText( dt, conf.columns ) );
+					var btn = button.children() ? button.children() : button;
+					btn.text( conf._columnText( dt, conf.columns ) );
 					that.active( col.visible() );
 				} );
 
