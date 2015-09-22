@@ -457,18 +457,21 @@ var _glue = function ( flash, node )
  */
 var _filename = function ( config, incExtension )
 {
-	var title = config.title;
+	// Backwards compatibility
+	var filename = config.filename === '*' && config.title !== '*' && config.title !== undefined ?
+		config.title :
+		config.filename;
 
-	if ( title.indexOf( '*' ) !== -1 ) {
-		title = title.replace( '*', $('title').text() );
+	if ( filename.indexOf( '*' ) !== -1 ) {
+		filename = filename.replace( '*', $('title').text() );
 	}
 
 	// Strip characters which the OS will object to
-	title = title.replace(/[^a-zA-Z0-9_\u00A1-\uFFFF\.,\-_ !\(\)]/g, "");
+	filename = filename.replace(/[^a-zA-Z0-9_\u00A1-\uFFFF\.,\-_ !\(\)]/g, "");
 
 	return incExtension === undefined || incExtension === true ?
-		title+config.extension :
-		title;
+		filename+config.extension :
+		filename;
 };
 
 /**
@@ -522,6 +525,9 @@ var _exportData = function ( dt, config )
 	var boundary = config.fieldBoundary;
 	var separator = config.fieldSeparator;
 	var reBoundary = new RegExp( boundary, 'g' );
+	var escapeChar = config.escapeChar !== undefined ?
+		config.escapeChar :
+		'\\';
 	var join = function ( a ) {
 		var s = '';
 
@@ -533,7 +539,7 @@ var _exportData = function ( dt, config )
 			}
 
 			s += boundary ?
-				boundary + ('' + a[i]).replace( reBoundary, '\\'+boundary ) + boundary :
+				boundary + ('' + a[i]).replace( reBoundary, escapeChar+boundary ) + boundary :
 				a[i];
 		}
 
@@ -589,6 +595,8 @@ var flashButton = {
 	exportOptions: {},
 
 	title: '*',
+
+	filename: '*',
 
 	extension: '.csv',
 
@@ -671,7 +679,9 @@ DataTable.ext.buttons.csvFlash = $.extend( {}, flashButton, {
 		flash.setAction( 'csv' );
 		flash.setFileName( _filename( config ) );
 		_setText( flash, data.str );
-	}
+	},
+
+	escapeChar: '"',
 } );
 
 // Excel save file - this is really a CSV file using UTF-8 that Excel can read
@@ -691,7 +701,7 @@ DataTable.ext.buttons.excelFlash = $.extend( {}, flashButton, {
 			var cells = [];
 
 			for ( var i=0, ien=row.length ; i<ien ; i++ ) {
-				cells.push( $.isNumeric( row[i] ) ?
+				cells.push( ! row[i].match(/[^0-9\-\.]/) ?
 					'<c t="n"><v>'+row[i]+'</v></c>' :
 					'<c t="inlineStr"><is><t>'+
 						row[i].replace(/&(?!amp;)/g, '&amp;')+

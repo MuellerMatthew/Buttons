@@ -254,18 +254,21 @@ var _saveAs = (function(view) {
  */
 var _filename = function ( config, incExtension )
 {
-	var title = config.title;
+	// Backwards compatibility
+	var filename = config.filename === '*' && config.title !== '*' && config.title !== undefined ?
+		config.title :
+		config.filename;
 
-	if ( title.indexOf( '*' ) !== -1 ) {
-		title = title.replace( '*', $('title').text() );
+	if ( filename.indexOf( '*' ) !== -1 ) {
+		filename = filename.replace( '*', $('title').text() );
 	}
 
 	// Strip characters which the OS will object to
-	title = title.replace(/[^a-zA-Z0-9_\u00A1-\uFFFF\.,\-_ !\(\)]/g, "");
+	filename = filename.replace(/[^a-zA-Z0-9_\u00A1-\uFFFF\.,\-_ !\(\)]/g, "");
 
 	return incExtension === undefined || incExtension === true ?
-		title+config.extension :
-		title;
+		filename+config.extension :
+		filename;
 };
 
 /**
@@ -298,6 +301,9 @@ var _exportData = function ( dt, config )
 	var boundary = config.fieldBoundary;
 	var separator = config.fieldSeparator;
 	var reBoundary = new RegExp( boundary, 'g' );
+	var escapeChar = config.escapeChar !== undefined ?
+		config.escapeChar :
+		'\\';
 	var join = function ( a ) {
 		var s = '';
 
@@ -309,7 +315,7 @@ var _exportData = function ( dt, config )
 			}
 
 			s += boundary ?
-				boundary + ('' + a[i]).replace( reBoundary, '\\'+boundary ) + boundary :
+				boundary + ('' + a[i]).replace( reBoundary, escapeChar+boundary ) + boundary :
 				a[i];
 		}
 
@@ -481,14 +487,28 @@ DataTable.ext.buttons.csvHtml5 = {
 		// Set the text
 		var newLine = _newLine( config );
 		var output = _exportData( dt, config ).str;
+		var charset = config.charset;
+
+		if ( charset !== false ) {
+			if ( ! charset ) {
+				charset = document.characterSet || document.charset;
+			}
+
+			if ( charset ) {
+				charset = ';charset='+charset;
+			}
+		}
+		else {
+			charset = '';
+		}
 
 		_saveAs(
-			new Blob( [output], {type : 'text/csv'} ),
+			new Blob( [output], {type: 'text/csv'+charset} ),
 			_filename( config )
 		);
 	},
 
-	title: '*',
+	filename: '*',
 
 	extension: '.csv',
 
@@ -497,6 +517,10 @@ DataTable.ext.buttons.csvHtml5 = {
 	fieldSeparator: ',',
 
 	fieldBoundary: '"',
+
+	escapeChar: '"',
+
+	charset: null,
 
 	header: true,
 
@@ -525,7 +549,7 @@ DataTable.ext.buttons.excelHtml5 = {
 			var cells = [];
 
 			for ( var i=0, ien=row.length ; i<ien ; i++ ) {
-				cells.push( $.isNumeric( row[i] ) ?
+				cells.push( ! row[i].match(/[^0-9\-\.]/) ?
 					'<c t="n"><v>'+row[i]+'</v></c>' :
 					'<c t="inlineStr"><is><t>'+
 						row[i].replace(/&(?!amp;)/g, '&amp;')+
@@ -566,7 +590,7 @@ DataTable.ext.buttons.excelHtml5 = {
 		);
 	},
 
-	title: '*',
+	filename: '*',
 
 	extension: '.xlsx',
 
@@ -699,6 +723,8 @@ DataTable.ext.buttons.pdfHtml5 = {
 	},
 
 	title: '*',
+
+	filename: '*',
 
 	extension: '.pdf',
 
